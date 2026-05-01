@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Irregular Verbs Quiz</title>
+  <meta name="description" content="Practice irregular English verbs with this interactive quiz. Track your progress and compete on the leaderboard.">
+
+  <!-- Google Fonts: Playfair Display (títulos) + DM Mono (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PANTALLA DE LOGIN
+     Se muestra al inicio si no hay sesión guardada.
+     El usuario puede ingresar nombre+contraseña o jugar como guest.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Irregular Verbs</div>
+    <p class="login-subtitle">Practice & Compete</p>
+
+    <div id="loginForm">
+      <!-- Campo: Nombre -->
+      <div class="login-field">
+        <label for="loginName">Name</label>
+        <input type="text" id="loginName" placeholder="Your name…" maxlength="15" autocomplete="off" autocorrect="off">
+      </div>
+
+      <!-- Campo: Contraseña -->
+      <div class="login-field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="Your password…" autocomplete="off">
+      </div>
+
+      <!-- Mensajes de error (campo vacío, contraseña incorrecta, etc.) -->
+      <div class="login-error" id="loginError"></div>
+
+      <!-- Botón principal de login/registro -->
+      <button class="btn-login" id="btnLogin">Enter</button>
+
+      <!-- Divisor visual "or" -->
+      <div class="login-divider"><span>or</span></div>
+
+      <!-- Botón para entrar como invitado (sin guardar progreso) -->
+      <button class="btn-guest" id="btnGuest">Play as Guest</button>
+
+      <!-- Texto informativo -->
+      <p class="login-hint">Enter your name to save your progress and appear on the leaderboard</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     APP LAYOUT
+     Desktop: grid con leaderboard a la izquierda + quiz a la derecha
+     Mobile:  columna simple con tabs para cambiar entre quiz y ranking
+     Se oculta hasta que el usuario haga login o entre como guest.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="app-layout" id="appLayout" style="display: none;">
+
+  <!-- ── Tab Bar (solo visible en mobile < 769px) ───────────────── -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab active" data-tab="quiz">
+      <span class="tab-icon">🎯</span>
+      <span class="tab-label">Quiz</span>
+    </button>
+    <button class="tab" data-tab="leaderboard">
+      <span class="tab-icon">🏆</span>
+      <span class="tab-label">Ranking</span>
+    </button>
+  </div>
+
+  <!-- ── Leaderboard Sidebar ─────────────────────────────────────── -->
+  <!-- Desktop: sidebar fijo a la izquierda                          -->
+  <!-- Mobile: panel que se muestra al seleccionar la tab "Ranking"  -->
+  <aside class="leaderboard-panel" id="leaderboardPanel">
+    <div class="lb-header">
+      <span class="lb-title">🏆 Leaderboard</span>
+    </div>
+
+    <!-- Lista dinámica de los top 10 usuarios (renderizada por JS) -->
+    <div class="lb-list" id="lbList">
+      <div class="lb-empty">
+        <span class="lb-empty-icon">⏳</span>
+        <span class="lb-empty-text">Loading...</span>
+      </div>
+    </div>
+
+    <!-- Posición del usuario actual (si no está en top 10) -->
+    <div class="lb-user-position" id="lbUserPosition"></div>
+  </aside>
+
+  <!-- ── Quiz Main Content ───────────────────────────────────────── -->
+  <main class="main-content" id="mainContent">
+    <div class="shell">
+
+      <!-- Header: logo, info del usuario, y estadísticas de sesión -->
+      <header>
+        <div class="header-left">
+          <div class="logo">Irregular Verbs</div>
+          <div class="user-info">
+            <span class="user-name" id="userName"></span>
+            <button class="btn-logout" id="btnLogout">Logout</button>
+          </div>
+        </div>
+        <div class="meta">
+          <!-- Puntaje total acumulado (persistido en Firebase) -->
+          <div class="total-display" id="totalDisplay">★ 0</div>
+          <!-- Racha actual de respuestas correctas -->
+          <div class="streak-display" id="streakDisplay"></div>
+          <!-- Puntaje de la sesión actual (correctas / total) -->
+          <div class="score-display" id="scoreDisplay">0 / 0</div>
+        </div>
+      </header>
+
+      <!-- Barra de progreso (porcentaje de acierto de la sesión) -->
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <!-- Card principal del quiz -->
+      <div class="card" id="card">
+
+        <!-- Dots indicadores de qué tiempo verbal se pide -->
+        <div class="tense-dots" id="tenseDots">
+          <div class="tense-dot" id="dot0"></div>
+          <div class="tense-dot" id="dot1"></div>
+          <div class="tense-dot" id="dot2"></div>
+          <span class="tense-dot-label" id="dotLabel"></span>
+        </div>
+
+        <!-- Verbo dado (el que el usuario debe reconocer) -->
+        <div class="given-label" id="givenLabel">GIVEN · BASE FORM</div>
+        <div class="given-word" id="givenWord">—</div>
+
+        <!-- Instrucción de qué tiempo verbal escribir -->
+        <div class="ask-label" id="askLabel">TYPE THE SIMPLE PAST</div>
+
+        <!-- Input de respuesta -->
+        <div class="entry-wrap">
+          <input type="text" id="answerInput" placeholder="your answer…"
+                 autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+
+        <!-- Feedback (correcto/incorrecto, conjugación completa) -->
+        <div class="feedback">
+          <div class="feedback-answer" id="feedbackAnswer"></div>
+          <div class="full-row" id="fullRow"></div>
+          <div class="you-wrote" id="youWrote"></div>
+        </div>
+
+      </div><!-- /card -->
+
+      <!-- Botones de acción -->
+      <div class="btn-row">
+        <button class="btn-check" id="btnCheck">Check ↵</button>
+        <button class="btn-next" id="btnNext" disabled>Next →</button>
+      </div>
+
+      <!-- Mode pills: filtrar por tiempo verbal -->
+      <div class="mode-row" id="modeRow">
+        <button class="pill active" data-mode="all">All tenses</button>
+        <button class="pill" data-mode="past">Simple past</button>
+        <button class="pill" data-mode="pp">Past participle</button>
+        <button class="pill" data-mode="base">Base form</button>
+      </div>
+
+      <!-- Hint de teclado -->
+      <div class="hint">Press <kbd>Enter</kbd> to check · <kbd>Enter</kbd> again to continue</div>
+
+    </div><!-- /shell -->
+  </main>
+
+</div><!-- /app-layout -->
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCRIPTS
+     Orden de carga importante:
+     1. Firebase SDK (dependencia externa)
+     2. firebase-config.js (inicializa Firebase)
+     3. auth.js (login/registro, depende de Firebase)
+     4. leaderboard.js (renderiza ranking, depende de Firebase + auth)
+     5. quiz.js (lógica del quiz, depende de auth + leaderboard)
+     6. app.js (orquesta todo, depende de todos los anteriores)
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<!-- Firebase SDK (compat version para uso sin build tools) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<!-- Módulos de la aplicación -->
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
